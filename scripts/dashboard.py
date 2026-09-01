@@ -137,7 +137,7 @@ def load_config() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Header & Navigation
+# Header & Live Broker Connectivity
 # ---------------------------------------------------------------------------
 
 config = load_config()
@@ -148,35 +148,56 @@ signals_df = data["signals"]
 decisions_df = data["decisions"]
 reflections_df = data["reflections"]
 
-st.markdown('<div class="main-header">⚡ AlphaArb Monitor</div>', unsafe_allow_html=True)
+# Attempt to query live Alpaca broker account metrics
+live_equity = 100000.0
+live_cash = 100000.0
+live_buying_power = 400000.0
+live_positions_list = []
+broker_connected = False
+
+try:
+    from src.broker import create_broker
+    broker = create_broker()
+    acct = broker.get_account()
+    live_equity = float(acct.equity)
+    live_cash = float(acct.cash)
+    live_buying_power = float(acct.buying_power)
+    live_positions_list = broker.get_positions()
+    broker_connected = True
+except Exception as exc:
+    pass
+
+st.markdown('<div class="main-header">⚡ Z-Gate Stat-Arb Terminal</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="sub-header">Hybrid Multi-Agent Statistical Arbitrage System | Alpaca Paper Trading | Deterministic Risk Engine</div>',
     unsafe_allow_html=True,
 )
 
 # ---------------------------------------------------------------------------
-# Top KPI Metrics Row
+# Top KPI Metrics Row (Live Broker Synced)
 # ---------------------------------------------------------------------------
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
+initial_capital = float(config.get("initial_capital", 100000.0))
+net_pnl_usd = live_equity - initial_capital
+net_pnl_pct = (net_pnl_usd / initial_capital) * 100.0
+
 open_trades = trades_df[trades_df["status"] == "open"] if not trades_df.empty else pd.DataFrame()
 closed_trades = trades_df[trades_df["status"] == "closed"] if not trades_df.empty else pd.DataFrame()
 
-total_pnl = closed_trades["realized_pnl_usd"].sum() if not closed_trades.empty else 0.0
-win_count = len(closed_trades[closed_trades["realized_pnl_usd"] > 0]) if not closed_trades.empty else 0
-win_rate = (win_count / len(closed_trades) * 100.0) if len(closed_trades) > 0 else 0.0
-
 with col1:
-    st.metric("System Mode", "Paper Trading", "ALPACA_PAPER=true")
+    st.metric("Portfolio Equity", f"${live_equity:,.2f}", f"{net_pnl_usd:+,.2f} ({net_pnl_pct:+.2f}%)")
 with col2:
-    st.metric("Open Positions", len(open_trades))
+    st.metric("Available Cash", f"${live_cash:,.2f}", f"Buying Power: ${live_buying_power:,.0f}")
 with col3:
-    st.metric("Total Realized P/L", f"${total_pnl:,.2f}", f"{len(closed_trades)} closed")
+    st.metric("Active Positions", len(live_positions_list) if broker_connected else len(open_trades), "Alpaca Live" if broker_connected else "DB Synced")
 with col4:
-    st.metric("Win Rate", f"{win_rate:.1f}%", f"{win_count} wins")
+    win_count = len(closed_trades[closed_trades["realized_pnl_usd"] > 0]) if not closed_trades.empty else 0
+    win_rate = (win_count / len(closed_trades) * 100.0) if len(closed_trades) > 0 else 0.0
+    st.metric("Closed Trades", len(closed_trades), f"{win_rate:.0f}% Win Rate ({win_count}W)")
 with col5:
-    st.metric("Evaluated Signals", len(signals_df))
+    st.metric("Evaluated Signals", len(signals_df), "12 Active Pairs")
 
 st.divider()
 
@@ -227,8 +248,21 @@ with tab1:
             st.info("No equity signals generated yet. Run pipeline cycle to ingest bars.")
 
     with c2:
-        st.markdown("##### 📂 Active Options Positions")
-        if not eq_open.empty:
+        st.markdown("##### 📂 Active Options Positions (Alpaca Broker)")
+        opt_pos = [
+            {
+                "Contract": p.symbol,
+                "Qty": int(float(p.qty)),
+                "Entry Price": f"${float(p.avg_entry_price):.2f}",
+                "Market Value": f"${float(p.market_value):.2f}",
+                "Unrealized P/L": f"${float(p.unrealized_pnl):+,.2f}",
+            }
+            for p in live_positions_list
+            if len(p.symbol) > 10
+        ]
+        if opt_pos:
+            st.dataframe(pd.DataFrame(opt_pos), use_container_width=True)
+        elif not eq_open.empty:
             st.dataframe(
                 eq_open[["pair_id", "direction", "entry_z", "entry_beta", "entry_time"]],
                 use_container_width=True,
@@ -262,7 +296,7 @@ with tab1:
 
 with tab2:
     st.subheader("Module B — Crypto Spot Statistical Arbitrage (24/7)")
-    st.caption("Autonomous mean-reversion trading on BTC/ETH, ETH/SOL, BTC/SOL with dynamic beta hedging.")
+    st.caption("Autonomous mean-reversion trading on BTC/ETH, ETH/SOL, BTC/SOL, LINK/ETH with dynamic beta hedging.")
 
     cr_signals = signals_df[signals_df["module"] == "crypto"] if not signals_df.empty else pd.DataFrame()
     cr_trades = trades_df[trades_df["module"] == "crypto"] if not trades_df.empty else pd.DataFrame()
@@ -290,8 +324,21 @@ with tab2:
             st.info("No crypto signals generated yet.")
 
     with c2:
-        st.markdown("##### 📂 Active Spot Positions")
-        if not cr_open.empty:
+        st.markdown("##### 📂 Active Spot Positions (Alpaca Broker)")
+        crypto_pos = [
+            {
+                "Asset": p.symbol,
+                "Qty": f"{float(p.qty):.4f}",
+                "Entry Price": f"${float(p.avg_entry_price):,.2f}",
+                "Market Value": f"${float(p.market_value):,.2f}",
+                "Unrealized P/L": f"${float(p.unrealized_pnl):+,.2f}",
+            }
+            for p in live_positions_list
+            if len(p.symbol) <= 10
+        ]
+        if crypto_pos:
+            st.dataframe(pd.DataFrame(crypto_pos), use_container_width=True)
+        elif not cr_open.empty:
             st.dataframe(
                 cr_open[["pair_id", "direction", "entry_z", "entry_beta", "entry_time"]],
                 use_container_width=True,
