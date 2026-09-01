@@ -294,16 +294,17 @@ streamlit run scripts/dashboard.py
 
 To maintain continuous 24/7 operation without keeping a personal computer powered on, use any of the following 100% free hosting options:
 
-### Option A: Render.com (Free Background Worker)
+### Option A: Render.com (100% Free Web Service with Live Dashboard)
 1. Fork / push this repository to your GitHub account.
 2. Sign up at [Render.com](https://render.com) (Free Tier).
-3. Create a **New Background Worker** and link your `Z-Gate` repository.
+3. Create a **New Web Service** and connect your `Z-Gate` repository.
 4. Set Environment Variables:
    * `ALPACA_API_KEY`: `your_paper_key`
    * `ALPACA_SECRET_KEY`: `your_paper_secret`
    * `ALPACA_PAPER`: `true`
 5. Set Build Command: `pip install -r requirements.txt`
-6. Set Start Command: `python scripts/run_live_paper.py`
+6. Set Start Command: `python scripts/render_entrypoint.py`
+   * *This entrypoint automatically binds to Render's web port to host the interactive Streamlit dashboard while running the 24/7 Stat-Arb trading engine in the background.*
 
 ### Option B: Koyeb Free Serverless Container
 1. Sign up at [Koyeb.com](https://www.koyeb.com) (Free Eco Tier).
