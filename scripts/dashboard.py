@@ -32,7 +32,7 @@ import yaml
 # ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="AlphaArb — Stat-Arb Terminal",
+    page_title="Z-Gate — Stat-Arb Terminal",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
