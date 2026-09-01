@@ -18,5 +18,5 @@ COPY . .
 # Ensure data and logs directories exist
 RUN mkdir -p data logs results
 
-# Default command: run the live paper trading daemon
-CMD ["python", "scripts/run_live_paper.py"]
+# Default command: run the dual-process entrypoint (24/7 trader + web dashboard on $PORT)
+CMD ["python", "scripts/render_entrypoint.py"]
