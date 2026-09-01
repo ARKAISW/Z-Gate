@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  trader:
+    build: .
+    container_name: alpaca_stat_arb_trader
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./results:/app/results
+
+  dashboard:
+    build: .
+    container_name: alpaca_stat_arb_dashboard
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    ports:
+      - "8501:8501"
+    command: ["streamlit", "run", "scripts/dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]

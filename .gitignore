@@ -1,0 +1,26 @@
+﻿# Secrets — never commit
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Data / logs / DB
+data/
+logs/
+*.db
+*.log
+
+# Backtest output
+results/
+*.png
+*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.swp

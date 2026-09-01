@@ -1,0 +1,124 @@
+# =============================================================================
+# config.yaml — All strategy, risk, and scheduling parameters
+# Every number here corresponds to a named constant; none are hardcoded.
+# See STRATEGY.md and RISK_RULES.md for full rationale on each parameter.
+#
+# NOTE: Thresholds are calibrated AGGRESSIVELY for hackathon demo visibility.
+# A production system would use tighter gates (see git history for originals).
+# =============================================================================
+
+# ── Universe ──────────────────────────────────────────────────────────────────
+equity_pairs:
+  - [GLD, SLV]          # Gold vs Silver ETFs — commodity cointegration
+  - [XOM, CVX]          # ExxonMobil vs Chevron — energy majors
+  - [KO, PEP]           # Coca-Cola vs PepsiCo — consumer staples duopoly
+  - [GOOGL, META]       # Alphabet vs Meta — digital advertising duopoly
+  - [NVDA, AMD]         # Nvidia vs AMD — semiconductor GPU leaders
+  - [V, MA]             # Visa vs Mastercard — payment rails duopoly
+  - [JPM, BAC]          # JPMorgan vs Bank of America — money-center banks
+  - [HD, LOW]           # Home Depot vs Lowe's — home improvement retail
+
+crypto_pairs:
+  - [BTC/USD, ETH/USD]
+  - [ETH/USD, SOL/USD]
+  - [BTC/USD, SOL/USD]
+  - [LINK/USD, ETH/USD]
+
+# ── Cointegration gate ────────────────────────────────────────────────────────
+# Strict Engle-Granger ADF test threshold (95% statistical confidence of stationarity).
+coint_pvalue_threshold: 0.05
+coint_lookback_days_equity: 90     # trading days of daily bars
+coint_lookback_hours_crypto: 720   # hours of hourly bars (= 30 days)
+
+# ── Kalman filter ─────────────────────────────────────────────────────────────
+# R: observation noise — how much we trust the price data (same for both modules)
+kalman_observation_noise: 0.001
+
+# Q: transition noise — how fast beta can drift between bars.
+kalman_transition_noise_equity: 0.0001
+kalman_transition_noise_crypto:  0.001
+
+# ── OU parameter estimation ────────────────────────────────────────────────────
+ou_lookback_days_equity: 30        # trading days of daily spread values
+ou_lookback_hours_crypto: 168      # hours of hourly spread values (= 7 days)
+
+# Half-life gate: only trade if estimated half-life is in this range.
+halflife_min_days: 2
+halflife_max_days: 30
+halflife_min_hours: 4
+halflife_max_hours: 96
+
+# ── Signal thresholds ─────────────────────────────────────────────────────────
+# INSTITUTIONAL QUANT: Enter on genuine statistical dislocations (1.5σ - 1.75σ).
+# Filters out 90% of random microstructure noise.
+entry_z_threshold_equity: 1.5
+entry_z_threshold_crypto: 1.75
+
+# High-vol overrides: slightly wider in high volatility.
+entry_z_threshold_high_vol_equity: 2.0
+entry_z_threshold_high_vol_crypto: 2.25
+
+# Exit: take profits when spread returns to fair value band.
+exit_z_threshold: 0.30
+
+# Stops: Wide enough to let the spread breathe without getting stopped on noise.
+stop_z_threshold_equity: 3.0
+stop_z_threshold_crypto: 3.5
+
+# ── Volatility regime ──────────────────────────────────────────────────────────
+# Raised substantially — crypto is volatile by nature, and equity vol spikes
+# are exactly when cointegrated spreads dislocate (= trading opportunities).
+# EXTREME still blocks, but the bar is much higher.
+high_vol_threshold_equity: 0.50
+extreme_vol_threshold_equity: 1.00
+high_vol_threshold_crypto: 1.20
+extreme_vol_threshold_crypto: 2.00
+
+# ── Module A — Equity options execution ────────────────────────────────────────
+# target_dte = tau_days * expiry_multiplier — snapped to nearest available expiry.
+expiry_multiplier: 2.5
+time_stop_days_equity: 14          # force-close at 14 calendar days
+max_premium_pct_equity: 0.05       # 5% max options premium budget per spread ($5,000 on $100k)
+
+# ── Module B — Crypto spot execution ──────────────────────────────────────────
+time_stop_hours_crypto: 72         # force-close at 72h / 3 days
+max_position_pct_equity: 0.15      # 15% max notional per pair ($15,000 on $100k)
+
+# ── Position sizing (shared) ──────────────────────────────────────────────────
+# Fractional Kelly criterion: captures strong edge while preserving bankroll.
+kelly_fraction: 0.35
+
+# Per-trade risk cap: max loss at stop expressed as % of account equity.
+max_risk_per_trade_pct: 0.015      # 1.5% max loss at stop-loss
+
+# ── Risk limits ────────────────────────────────────────────────────────────────
+max_open_equity_pairs: 5           # max 5 simultaneous equity options pairs (up to 75% deployed)
+max_open_crypto_pairs: 3           # max 3 simultaneous crypto pairs
+
+# Rolling 24h realized + unrealized P/L below this triggers circuit breaker.
+rolling_24h_loss_limit_pct: 0.05   # -5% of account equity (was 3%)
+circuit_breaker_cooldown_hours: 2  # 2h cooldown (was 4h) — faster recovery
+
+# Reject any signal whose bar data is older than this (minutes).
+max_data_staleness_minutes_crypto: 120   # hourly bars valid within 2h
+max_data_staleness_minutes_equity: 5760  # daily bars valid within 4 days (weekends/holidays)
+max_data_staleness_minutes: 15
+
+# ── Scheduling ────────────────────────────────────────────────────────────────
+poll_interval_seconds: 300         # 5 minutes (was 15)
+market_open_et: "09:30"
+market_close_et: "16:00"
+coint_recheck_hour_utc: 0          # midnight UTC daily cointegration recheck
+
+# ── Persistence ───────────────────────────────────────────────────────────────
+db_path: "data/trades.db"
+log_path: "logs/system.log"
+log_level: "INFO"                  # DEBUG | INFO | WARNING | ERROR
+
+# ── LLM ───────────────────────────────────────────────────────────────────────
+# Provider priority: groq → cerebras → featherless → ollama → none
+llm_provider: groq
+llm_model: "groq/compound-mini"
+llm_fallback_chain: [cerebras, featherless, ollama, none]
+llm_timeout_seconds: 10            # fail fast if provider is slow
+llm_max_headlines: 5               # headlines per asset per cycle
