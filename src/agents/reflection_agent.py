@@ -107,9 +107,9 @@ class ReflectionAgent:
                 if ref:
                     results["trade_reflections"].append(ref)
 
-            # 2. Aggregate Day Reflection
-            if closed_trades_rows:
-                day_ref = self._reflect_on_day(closed_trades_rows, date_str)
+            # 2. Aggregate Day Reflection (always generated)
+            day_ref = self._reflect_on_day(closed_trades_rows, date_str)
+            if day_ref:
                 results["day_reflection"] = day_ref
 
         except Exception as exc:

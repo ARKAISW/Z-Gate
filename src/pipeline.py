@@ -23,6 +23,7 @@ from zoneinfo import ZoneInfo
 import yaml
 
 from src.agents.execution_agent import ExecutionAgent
+from src.agents.reflection_agent import ReflectionAgent
 from src.agents.risk_agent import RiskAgent
 from src.agents.signal_agent import SignalAgent
 from src.broker import Broker, create_broker
@@ -60,6 +61,7 @@ class StatArbPipeline:
         self.signal_agent = SignalAgent(config=self.config, db=self.db)
         self.risk_agent = RiskAgent(config=self.config, db=self.db)
         self.execution_agent = ExecutionAgent(broker=self.broker, db=self.db, config=self.config)
+        self.reflection_agent = ReflectionAgent(db=self.db, config=self.config)
 
         self._last_coint_recheck_date: str | None = None
 
@@ -91,11 +93,15 @@ class StatArbPipeline:
             "skipped_reasons": [],
         }
 
-        # Check daily midnight UTC jobs
+        # Check daily midnight UTC jobs (Cointegration recheck + Nightly reflection)
         if now_utc.hour == int(self.config.get("coint_recheck_hour_utc", 0)):
             today_str = now_utc.strftime("%Y-%m-%d")
             if self._last_coint_recheck_date != today_str:
                 self.recheck_cointegration(now=now_utc)
+                try:
+                    self.reflection_agent.run_nightly_reflection(now=now_utc)
+                except Exception as exc:
+                    logger.warning("Nightly reflection failed: %s", exc)
                 self._last_coint_recheck_date = today_str
 
         # ── Module A: Equity Options ──────────────────────────────────────────

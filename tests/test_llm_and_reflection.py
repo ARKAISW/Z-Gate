@@ -143,4 +143,3 @@ class TestReflectionAgent:
         results = agent.run_nightly_reflection(utc_date="2026-01-01")
 
         assert len(results["trade_reflections"]) == 0
-        assert results["day_reflection"] is None
