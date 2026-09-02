@@ -25,8 +25,8 @@ crypto_pairs:
   - [LINK/USD, ETH/USD]
 
 # ── Cointegration gate ────────────────────────────────────────────────────────
-# Strict Engle-Granger ADF test threshold (95% statistical confidence of stationarity).
-coint_pvalue_threshold: 0.05
+# Engle-Granger ADF test threshold (90-95% statistical confidence of stationarity).
+coint_pvalue_threshold: 0.10
 coint_lookback_days_equity: 90     # trading days of daily bars
 coint_lookback_hours_crypto: 720   # hours of hourly bars (= 30 days)
 
@@ -39,24 +39,23 @@ kalman_transition_noise_equity: 0.0001
 kalman_transition_noise_crypto:  0.001
 
 # ── OU parameter estimation ────────────────────────────────────────────────────
-ou_lookback_days_equity: 30        # trading days of daily spread values
-ou_lookback_hours_crypto: 168      # hours of hourly spread values (= 7 days)
+ou_lookback_days_equity: 45        # trading days of daily spread values
+ou_lookback_hours_crypto: 240      # hours of hourly spread values (= 10 days)
 
 # Half-life gate: only trade if estimated half-life is in this range.
 halflife_min_days: 2
-halflife_max_days: 30
+halflife_max_days: 60              # allows macro equity pair cycles (e.g. JPM-BAC at 43d)
 halflife_min_hours: 4
-halflife_max_hours: 96
+halflife_max_hours: 168            # allows multi-day crypto cycles (up to 7 days)
 
 # ── Signal thresholds ─────────────────────────────────────────────────────────
-# INSTITUTIONAL QUANT: Enter on genuine statistical dislocations (1.5σ - 1.75σ).
-# Filters out 90% of random microstructure noise.
-entry_z_threshold_equity: 1.5
-entry_z_threshold_crypto: 1.75
+# Optimized entry thresholds: triggers on authentic dislocations while avoiding micro-noise.
+entry_z_threshold_equity: 1.30     # 1.30σ entry threshold for options
+entry_z_threshold_crypto: 1.40     # 1.40σ entry threshold for crypto
 
 # High-vol overrides: slightly wider in high volatility.
-entry_z_threshold_high_vol_equity: 2.0
-entry_z_threshold_high_vol_crypto: 2.25
+entry_z_threshold_high_vol_equity: 1.75
+entry_z_threshold_high_vol_crypto: 1.85
 
 # Exit: take profits when spread returns to fair value band.
 exit_z_threshold: 0.30

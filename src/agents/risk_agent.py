@@ -195,10 +195,10 @@ class RiskAgent:
         tau = signal.ou_params.half_life
         if signal.module == "equity":
             hl_min = float(self.config.get("halflife_min_days", 2.0))
-            hl_max = float(self.config.get("halflife_max_days", 40.0))
+            hl_max = float(self.config.get("halflife_max_days", 60.0))
         else:
             hl_min = float(self.config.get("halflife_min_hours", 2.0))
-            hl_max = float(self.config.get("halflife_max_hours", 120.0))
+            hl_max = float(self.config.get("halflife_max_hours", 168.0))
 
         if not (hl_min <= tau <= hl_max):
             return RiskDecision(
