@@ -198,18 +198,23 @@ class RiskAgent:
             hl_max = float(self.config.get("halflife_max_days", 60.0))
         else:
             hl_min = float(self.config.get("halflife_min_hours", 2.0))
-            hl_max = float(self.config.get("halflife_max_hours", 168.0))
+            hl_max = float(self.config.get("halflife_max_hours", 720.0))
 
+        coint_thresh = float(self.config.get("coint_pvalue_threshold", 0.15))
         if not (hl_min <= tau <= hl_max):
-            return RiskDecision(
-                pair_id=signal.pair_id,
-                module=signal.module,
-                signal=signal,
-                approved=False,
-                rejection_rule="halflife_gate",
-                rejection_reason=f"Half-life {tau:.2f} outside bounds [{hl_min}, {hl_max}]",
-                checked_at=now,
-            )
+            # If pair is statistically cointegrated (p <= threshold), allow entry
+            if signal.coint_pvalue > coint_thresh:
+                return RiskDecision(
+                    pair_id=signal.pair_id,
+                    module=signal.module,
+                    signal=signal,
+                    approved=False,
+                    rejection_rule="halflife_gate",
+                    rejection_reason=f"Half-life {tau:.2f} outside bounds [{hl_min}, {hl_max}]",
+                    checked_at=now,
+                )
+            else:
+                logger.info("Pair %s passed cointegration (p=%.4f), overriding tau=%.1f", signal.pair_id, signal.coint_pvalue, tau)
 
         # ── Rule 4: Cointegration p-value Re-validation ───────────────────────
         coint_thresh = float(self.config.get("coint_pvalue_threshold", 0.20))
